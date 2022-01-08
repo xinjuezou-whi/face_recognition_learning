@@ -27,47 +27,54 @@ known_face_metadata = []
 
 def parse_args():
     # Parse input arguments
-    desc = 'Capture and display live camera video on Raspberry Pi or Jetson TX2/TX1'
+    desc = "capture and display live camera video on Raspberry Pi or Jetson TX2/TX1"
     parser = argparse.ArgumentParser(description=desc)
-    parser.add_argument('--raspi', dest='is_jetson',
-                        help='specify as Raspberry Pi board',
-                        action='store_false')
-    parser.add_argument('--jetson', dest='is_jetson',
-                        help='specify as Jeston series board',
-                        action='store_true')
-    parser.add_argument('--rtsp', dest='use_rtsp',
-                        help='use IP CAM (remember to also set --uri)',
-                        action='store_true')
-    parser.add_argument('--uri', dest='rtsp_uri',
-                        help='RTSP URI, e.g. rtsp://192.168.1.64:554',
+    parser.add_argument("--raspi", dest="isJetson",
+                        help="specify as Raspberry Pi board",
+                        action="store_false")
+    parser.add_argument("--jetson", dest="isJetson",
+                        help="specify as Jeston series board",
+                        action="store_true")
+    parser.add_argument("--rtsp", dest="useRtsp",
+                        help="use IP CAM (remember to also set --uri)",
+                        action="store_true")
+    parser.add_argument("--uri", dest="rtspUri",
+                        help="RTSP URI, e.g. rtsp://192.168.1.64:554",
                         default=None, type=str)
-    parser.add_argument('--latency', dest='rtsp_latency',
-                        help='latency in ms for RTSP [200]',
+    parser.add_argument("--latency", dest="rtspLatency",
+                        help="latency in ms for RTSP [200]",
                         default=200, type=int)
-    parser.add_argument('--usb', dest='use_usb',
-                        help='use USB webcam (remember to also set --vid)',
-                        action='store_true')
-    parser.add_argument('--vid', dest='video_dev',
-                        help='device # of USB webcam (/dev/video?) [1]',
+    parser.add_argument("--usb", dest="useUsb",
+                        help="use USB webcam (remember to also set --vid)",
+                        action="store_true")
+    parser.add_argument("--vid", dest="videoDev",
+                        help="device # of USB webcam (/dev/video?) [1]",
                         default=1, type=int)
-    parser.add_argument('--width', dest='image_width',
-                        help='image width [1920]',
+    parser.add_argument("--width", dest="imageWidth",
+                        help="image width [1920]",
                         default=1920, type=int)
-    parser.add_argument('--height', dest='image_height',
-                        help='image height [1080]',
+    parser.add_argument("--height", dest="imageHeight",
+                        help="image height [1080]",
                         default=1080, type=int)
     args = parser.parse_args()
     return args
+
+
+def running_on_raspi_or_jetson():
+    # To make the same code work on a laptop or on a Raspi or Jetson, we'll detect when we are running on the arm
+    # so that we can access the camera correctly in that case.
+    # On a normal Intel laptop, platform.machine() will be "x86_64" instead of "aarch64"
+    return platform.machine() == "aarch64"
 
 
 def open_cam_usb(isJetson, dev, width, height):
     # We want to set width and height here, otherwise we could just do:
     #   return cv2.VideoCapture(dev)
     if isJetson:
-        gst_str = ('v4l2src device=/dev/video{} ! '
-            'video/x-raw, width=(int){}, height=(int){} ! '
-            'videoconvert ! appsink').format(dev, width, height)
-        return cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
+        gstStr = ("v4l2src device=/dev/video{} ! "
+            "video/x-raw, width=(int){}, height=(int){} ! "
+            "videoconvert ! appsink").format(dev, width, height)
+        return cv2.VideoCapture(gstStr, cv2.CAP_GSTREAMER)
     else:
         cap = cv2.VideoCapture(dev)
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
@@ -77,30 +84,30 @@ def open_cam_usb(isJetson, dev, width, height):
 
 def open_cam_onboard(isJetson, width, height):
     if isJetson:
-        gst_elements = str(subprocess.check_output('gst-inspect-1.0'))
-        if 'nvcamerasrc' in gst_elements:
-            # On versions of L4T prior to 28.1, add 'flip-method=2' into gst_str
-            gst_str = ('nvcamerasrc ! '
-                   'video/x-raw(memory:NVMM), '
-                   'width=(int)2592, height=(int)1458, '
-                   'format=(string)I420, framerate=(fraction)30/1 ! '
-                   'nvvidconv ! '
-                   'video/x-raw, width=(int){}, height=(int){}, '
-                   'format=(string)BGRx ! '
-                   'videoconvert ! appsink').format(width, height)
-        elif 'nvarguscamerasrc' in gst_elements:
-            gst_str = ('nvarguscamerasrc ! '
-                   'video/x-raw(memory:NVMM), '
-                   'width=(int)1920, height=(int)1080, '
-                   'format=(string)NV12, framerate=(fraction)30/1 ! '
-                   'nvvidconv flip-method=2 ! '
-                   'video/x-raw, width=(int){}, height=(int){}, '
-                   'format=(string)BGRx ! '
-                   'videoconvert ! appsink').format(width, height)
+        gstElements = str(subprocess.check_output("gst-inspect-1.0"))
+        if "nvcamerasrc" in gstElements:
+            # On versions of L4T prior to 28.1, add "flip-method=2" into gstStr
+            gstStr = ("nvcamerasrc ! "
+                   "video/x-raw(memory:NVMM), "
+                   "width=(int)2592, height=(int)1458, "
+                   "format=(string)I420, framerate=(fraction)30/1 ! "
+                   "nvvidconv ! "
+                   "video/x-raw, width=(int){}, height=(int){}, "
+                   "format=(string)BGRx ! "
+                   "videoconvert ! appsink").format(width, height)
+        elif "nvarguscamerasrc" in gstElements:
+            gstStr = ("nvarguscamerasrc ! "
+                   "video/x-raw(memory:NVMM), "
+                   "width=(int)1920, height=(int)1080, "
+                   "format=(string)NV12, framerate=(fraction)30/1 ! "
+                   "nvvidconv flip-method=2 ! "
+                   "video/x-raw, width=(int){}, height=(int){}, "
+                   "format=(string)BGRx ! "
+                   "videoconvert ! appsink").format(width, height)
         else:
-            raise RuntimeError('onboard camera source not found!')
+            raise RuntimeError("onboard camera source not found!")
 
-        return cv2.VideoCapture(gst_str, cv2.CAP_GSTREAMER)
+        return cv2.VideoCapture(gstStr, cv2.CAP_GSTREAMER)
     else:
         cap = cv2.VideoCapture(0)
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
@@ -125,13 +132,6 @@ def load_known_faces():
     except FileNotFoundError as e:
         print("No previous face data found - starting with a blank known face list.")
         pass
-
-
-def running_on_jetson_nano():
-    # To make the same code work on a laptop or on a Jetson Nano, we'll detect when we are running on the Nano
-    # so that we can access the camera correctly in that case.
-    # On a normal Intel laptop, platform.machine() will be "x86_64" instead of "aarch64"
-    return platform.machine() == "aarch64"
 
 
 def get_jetson_gstreamer_source(capture_width=1280, capture_height=720, display_width=1280, display_height=720, framerate=60, flip_method=0):
@@ -213,12 +213,12 @@ def main_loop():
     print(args)
 
     # Get access to the webcam. The method is different depending on if this is running on a laptop or a Jetson Nano.
-    if running_on_jetson_nano():
+    if running_on_raspi_or_jetson():
         # Accessing the camera with OpenCV on a Jetson Nano requires gstreamer with a custom gstreamer source string
-        if args.use_usb:
-            video_capture = open_cam_usb(args.is_jetson, args.video_dev, args.image_width, args.image_height)
+        if args.useUsb:
+            video_capture = open_cam_usb(args.isJetson, args.videoDev, args.imageWidth, args.imageHeight)
         else:
-            video_capture = open_cam_onboard(args.is_jetson, args.image_width, args.image_height)
+            video_capture = open_cam_onboard(args.isJetson, args.imageWidth, args.imageHeight)
     else:
         # Accessing the camera with OpenCV on a laptop just requires passing in the number of the webcam (usually 0)
         # Note: You can pass in a filename instead if you want to process a video file instead of a live camera stream
